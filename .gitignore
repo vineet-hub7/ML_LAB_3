@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+venv/
+env/
+.env
+.vscode/
+
+# Ignore local datasets if user doesn't want them in repo
+# Social_Network_Ads.csv
+# play_tennis*.csv
+# dataset.zip
+# dataset/
