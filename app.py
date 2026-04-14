@@ -1,9 +1,6 @@
-import os
+import gradio as gr
 import pickle
 import numpy as np
-from flask import Flask, request, jsonify, render_template
-
-app = Flask(__name__)
 
 # Load models and scalers safely
 def load_pickle(file_name):
@@ -20,74 +17,79 @@ model_social = load_pickle('model_social.pkl')
 scaler_ss = load_pickle('scaler_ss.pkl')
 scaler_mm = load_pickle('scaler_mm.pkl')
 
-@app.route('/')
-def index():
-    # Serves the beautifully designed frontend
-    return render_template('index.html')
+def predict_tennis(outlook, temp, humidity, wind):
+    if not model_tennis: return "Model not loaded properly."
+    
+    # Encoded value mapping based on trained models
+    out_map = {"Overcast": 0, "Rain": 1, "Sunny": 2}
+    temp_map = {"Cool": 0, "Hot": 1, "Mild": 2}
+    hum_map = {"High": 0, "Normal": 1}
+    wind_map = {"Strong": 0, "Weak": 1}
+    
+    features = np.array([[out_map[outlook], temp_map[temp], hum_map[humidity], wind_map[wind]]])
+    pred = model_tennis.predict(features)[0]
+    
+    # Decode target: No=0, Yes=1
+    return "✅ Yes, play tennis!" if pred == 1 else "❌ No, do not play."
 
-@app.route('/api/predict_tennis', methods=['POST'])
-def predict_tennis():
-    try:
-        data = request.json
-        if not model_tennis:
-            return jsonify({'error': 'Tennis model not available on Server.', 'status': 'Error'}), 500
 
-        # Extract features and convert to int
-        outlook = int(data.get('outlook'))
-        temp = int(data.get('temp'))
-        humidity = int(data.get('humidity'))
-        wind = int(data.get('wind'))
+def predict_social(age, salary, scaler_choice):
+    if not model_social: return "Model not loaded properly."
+    
+    features = np.array([[float(age), float(salary)]])
+    
+    # Apply chosen scaler
+    if scaler_choice == "MinMax Scaler":
+        if not scaler_mm: return "MinMax Scaler missing!"
+        features_scaled = scaler_mm.transform(features)
+    else:
+        if not scaler_ss: return "Standard Scaler missing!"
+        features_scaled = scaler_ss.transform(features)
         
-        # Make prediction: features order ['outlook', 'temp', 'humidity', 'wind']
-        features = np.array([[outlook, temp, humidity, wind]])
-        prediction = model_tennis.predict(features)[0]
-        
-        # Decode target: No=0, Yes=1
-        result = "Yes, play tennis!" if prediction == 1 else "No, do not play."
-        return jsonify({'prediction': result, 'prediction_value': int(prediction), 'status': 'Success'})
-
-    except Exception as e:
-        return jsonify({'error': str(e), 'status': 'Error'}), 400
+    pred = model_social.predict(features_scaled)[0]
+    
+    # Decode target: Not Purchased=0, Purchased=1
+    return "🛒 Will Purchase" if pred == 1 else "🚫 Will Not Purchase"
 
 
-@app.route('/api/predict_social', methods=['POST'])
-def predict_social():
-    try:
-        data = request.json
-        if not model_social:
-            return jsonify({'error': 'Social Network Ads model not available on Server.', 'status': 'Error'}), 500
-
-        age = float(data.get('age'))
-        salary = float(data.get('salary'))
-        scaler_choice = data.get('scaler_choice', 'standard')
-
-        features = np.array([[age, salary]])
-        
-        # Apply chosen scaler
-        if scaler_choice == 'minmax':
-            if not scaler_mm:
-                return jsonify({'error': 'MinMax Scaler not loaded on server.', 'status': 'Error'}), 500
-            features_scaled = scaler_mm.transform(features)
-        else: # Defaults to standard
-            if not scaler_ss:
-                return jsonify({'error': 'Standard Scaler not loaded on server.', 'status': 'Error'}), 500
-            features_scaled = scaler_ss.transform(features)
+# Gradio Block UI Design
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", neutral_hue="slate")) as demo:
+    gr.Markdown("# 🤖 ML Prediction Studio")
+    gr.Markdown("Experience the power of our trained Naive Bayes models!")
+    
+    with gr.Tabs():
+        # Play Tennis Tab
+        with gr.TabItem("🎾 Play Tennis Predictor"):
+            gr.Markdown("### Should you play Tennis today?")
             
-        prediction = model_social.predict(features_scaled)[0]
-        
-        # Decode target: Not Purchased=0, Purchased=1
-        result = "Purchased" if prediction == 1 else "Not Purchased"
-        return jsonify({
-            'prediction': result, 
-            'prediction_value': int(prediction), 
-            'scaler_used': scaler_choice,
-            'status': 'Success'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e), 'status': 'Error'}), 400
+            with gr.Row():
+                outlook_in = gr.Dropdown(choices=["Sunny", "Overcast", "Rain"], label="Outlook", value="Sunny")
+                temp_in = gr.Dropdown(choices=["Hot", "Mild", "Cool"], label="Temperature", value="Hot")
+            
+            with gr.Row():
+                humidity_in = gr.Dropdown(choices=["High", "Normal"], label="Humidity", value="High")
+                wind_in = gr.Dropdown(choices=["Weak", "Strong"], label="Wind", value="Weak")
+                
+            tennis_btn = gr.Button("Predict Outcome", variant="primary")
+            tennis_out = gr.Textbox(label="Prediction Result", show_label=True, elem_classes="result-box")
+            
+            tennis_btn.click(fn=predict_tennis, inputs=[outlook_in, temp_in, humidity_in, wind_in], outputs=tennis_out)
+            
+        # Social Network Ads Tab
+        with gr.TabItem("📱 Social Network Ads"):
+            gr.Markdown("### Product Purchase Predictor")
+            
+            with gr.Row():
+                age_in = gr.Number(label="Age", value=30, precision=0)
+                salary_in = gr.Number(label="Estimated Salary ($)", value=50000)
+                
+            scaler_in = gr.Radio(choices=["Standard Scaler", "MinMax Scaler"], label="Feature Scaler Algorithm", value="Standard Scaler")
+            
+            social_btn = gr.Button("Predict Purchase", variant="primary")
+            social_out = gr.Textbox(label="Prediction Result", show_label=True)
+            
+            social_btn.click(fn=predict_social, inputs=[age_in, salary_in, scaler_in], outputs=social_out)
 
-if __name__ == '__main__':
-    # Optional: use port from env port if deployed on Render
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+if __name__ == "__main__":
+    # Hugging Face Spaces exposes port 7860
+    demo.launch(server_name="0.0.0.0", server_port=7860)
