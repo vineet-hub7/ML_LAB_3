@@ -17,15 +17,10 @@
             <p>Experience the power of our trained models instantly.</p>
         </header>
 
-        <div class="tabs" style="display: none;">
-            <button class="tab-btn active" data-target="tennis-section">Play Tennis Predictor</button>
-            <button class="tab-btn" data-target="social-section">Social Network Ads</button>
-        </div>
-
         <main>
             <!-- Play Tennis Section -->
             <section id="tennis-section" class="model-section active">
-                <h2>Should you play Tennis today?</h2>
+                <h2>1. Should you play Tennis today?</h2>
                 <form id="tennis-form">
                     <div class="input-group">
                         <label for="outlook">Outlook</label>
@@ -61,18 +56,20 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="submit-btn">Predict Outcome</button>
+                    <button type="submit" class="submit-btn" style="margin-bottom: 2rem;">Predict Outcome</button>
                 </form>
                 
-                <div class="result-card hidden" id="tennis-result">
+                <div class="result-card hidden" id="tennis-result" style="margin-bottom: 3rem;">
                     <h3>Prediction</h3>
                     <div class="prediction-text" id="tennis-output"></div>
                 </div>
             </section>
 
+            <hr style="border-color: rgba(255,255,255,0.1); margin-bottom: 2rem;">
+
             <!-- Social Network Ads Section -->
-            <section id="social-section" class="model-section active" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                <h2>Product Purchase Predictor</h2>
+            <section id="social-section" class="model-section active">
+                <h2>2. Product Purchase Predictor</h2>
                 <p class="subtitle">Based on Social Network Ads data</p>
                 <form id="social-form">
                     <div class="input-group">
